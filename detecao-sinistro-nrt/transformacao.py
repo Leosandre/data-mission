@@ -6,7 +6,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from config import EXPECTED_COLUMNS, VALID_HTTP_METHODS, OUTPUT_DIR
+from config import EXPECTED_COLUMNS, VALID_HTTP_METHODS, VALID_STATUS_CODES, OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,9 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
     # Filtrar métodos HTTP válidos
     df = df[df["http_method"].isin(VALID_HTTP_METHODS)]
+
+    # Filtrar status codes válidos
+    df = df[df["status_code"].isin(VALID_STATUS_CODES)]
 
     # Normalizar endpoint (lowercase, strip)
     df["endpoint"] = df["endpoint"].str.strip().str.lower()
