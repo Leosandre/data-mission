@@ -3,6 +3,7 @@
 import logging
 import os
 
+import numpy as np
 import pandas as pd
 
 from config import EXPECTED_COLUMNS, VALID_HTTP_METHODS, OUTPUT_DIR
@@ -94,19 +95,10 @@ def classify_incidents(df: pd.DataFrame) -> pd.DataFrame:
         (df["status_code"] >= 400) | (df["response_time_ms"] > 1000),
     ]
     choices = ["critical", "high", "medium"]
-    df["incident_severity"] = pd.Series(
-        pd.Categorical(
-            values=pd.array(choices)[0:0],  # placeholder
-            categories=["low", "medium", "high", "critical"],
-            ordered=True,
-        )
-    )
-    df["incident_severity"] = (
-        pd.Categorical(
-            pd.core.common.np.select(conditions, choices, default="low"),
-            categories=["low", "medium", "high", "critical"],
-            ordered=True,
-        )
+    df["incident_severity"] = pd.Categorical(
+        np.select(conditions, choices, default="low"),
+        categories=["low", "medium", "high", "critical"],
+        ordered=True,
     )
 
     counts = df["incident_severity"].value_counts()
