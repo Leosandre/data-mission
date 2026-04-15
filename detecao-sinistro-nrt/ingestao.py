@@ -8,15 +8,23 @@ import requests
 
 from config import API_URL, STAGING_DIR, LOGS_DIR
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(os.path.join(LOGS_DIR, "ingestao.log")),
-        logging.StreamHandler(),
-    ],
-)
+# Garante que o diretório de logs existe antes de criar o FileHandler
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Logger explícito — não depende de basicConfig (funciona mesmo quando pipeline.py já inicializou o logging)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+_file_handler = logging.FileHandler(os.path.join(LOGS_DIR, "ingestao.log"))
+_stream_handler = logging.StreamHandler()
+
+_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+_file_handler.setFormatter(_formatter)
+_stream_handler.setFormatter(_formatter)
+
+logger.addHandler(_file_handler)
+logger.addHandler(_stream_handler)
 
 
 def get_token() -> str:
@@ -35,7 +43,7 @@ def fetch_dataset(token: str) -> bytes:
     headers = {"Authorization": f"Bearer {token}"}
     logger.info(f"Requisição GET para {API_URL}")
 
-    response = requests.get(API_URL, headers=headers, timeout=60)
+    response = requests.get(url=API_URL, headers=headers, timeout=60)
     response.raise_for_status()
 
     logger.info(f"Status: {response.status_code} | Tamanho: {len(response.content)} bytes")
