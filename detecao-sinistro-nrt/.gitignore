@@ -1,0 +1,8 @@
+staging/
+output/
+logs/
+__pycache__/
+*.pyc
+dataset*.csv
+dataset*.parquet
+.env
