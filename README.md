@@ -13,12 +13,14 @@ Pipeline de ingestão, transformação e validação de dados de logs para detec
 detecao-sinistro-nrt/
 ├── config.py              # Configurações (API, schema, validações)
 ├── ingestao.py            # Coleta de dados via API DataMission
-├── transformacao.py       # Limpeza, validação de schema, enriquecimento
+├── transformacao.py       # Limpeza, validação de schema, enriquecimento, regras de negócio
 ├── validacao.py           # Checks de qualidade dos dados finais
 ├── pipeline.py            # Orquestrador do pipeline completo
 ├── requirements.txt       # Dependências Python
 ├── staging/               # Dados brutos (não versionado)
 ├── output/                # Dados transformados (não versionado)
+│   ├── logs_transformed.csv / .parquet   # Registros enriquecidos com classificação
+│   └── indicators.csv / .parquet         # Indicadores diários agregados
 └── logs/                  # Logs de execução (não versionado)
 ```
 
@@ -47,20 +49,53 @@ python3 pipeline.py dataset.csv
 python3 ingestao.py
 ```
 
+**Pipeline — etapas:**
+
+1. **Ingestão** (`ingestao.py`): GET na API → salva CSV bruto em `staging/` com timestamp
+2. **Transformação** (`transformacao.py`):
+   - Validação de schema (colunas esperadas)
+   - Limpeza (tipos, nulos, duplicatas, métodos HTTP inválidos)
+   - Enriquecimento (status_category, is_error, latency_class, date, hour)
+   - Classificação de sinistros por severidade (critical/high/medium/low)
+   - Cálculo de indicadores diários (requests, erros, latência p95, taxa de erro)
+   - Saída em CSV e Parquet
+3. **Validação** (`validacao.py`): Completude, unicidade, volume, distribuição, latência
+
+**Regras de negócio — classificação de sinistros:**
+
+| Severidade | Regra |
+|---|---|
+| `critical` | Status 500 + latência > 1000ms |
+| `high` | Status 500 OU latência > 1500ms |
+| `medium` | Status 4xx OU latência > 1000ms |
+| `low` | Requisições normais |
+
+**Indicadores diários** (`output/indicators.parquet`):
+
+| Indicador | Descrição |
+|---|---|
+| `total_requests` | Total de requisições no dia |
+| `total_errors` | Requisições com status >= 400 |
+| `total_critical` | Sinistros classificados como critical |
+| `total_high` | Sinistros classificados como high |
+| `avg_response_time_ms` | Tempo médio de resposta |
+| `p95_response_time_ms` | Percentil 95 de latência |
+| `error_rate_pct` | Taxa de erro (%) |
+
 **Validação:**
 ```bash
-# Verificar se o pipeline gerou os artefatos esperados
-ls staging/       # CSV bruto com timestamp
-ls output/        # logs_transformed.csv (dados enriquecidos)
-cat logs/pipeline.log    # Log do pipeline completo
-cat logs/ingestao.log    # Log específico da ingestão (requisições/downloads)
+# Verificar artefatos gerados
+ls output/
 
-# Validar dados finais manualmente
+# Validar dados finais
 python3 -c "
 import pandas as pd
 from validacao import validate
-df = pd.read_csv('output/logs_transformed.csv')
-df['timestamp'] = pd.to_datetime(df['timestamp'])
-validate(df)
+df = pd.read_parquet('output/logs_transformed.parquet')
+validate(df, pd.read_parquet('output/indicators.parquet'))
 "
+
+# Verificar logs
+cat logs/pipeline.log
+cat logs/ingestao.log
 ```

@@ -41,10 +41,10 @@ def run(source: str = None):
         filepath = ingest()
 
     # 2. Transformação
-    df = transform(filepath)
+    df, indicators = transform(filepath)
 
     # 3. Validação
-    report = validate(df)
+    report = validate(df, indicators)
 
     if not report["validation_passed"]:
         logger.warning("Pipeline concluído com falhas de validação")

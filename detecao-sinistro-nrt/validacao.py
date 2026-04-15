@@ -7,7 +7,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-def validate(df: pd.DataFrame) -> dict:
+def validate(df: pd.DataFrame, indicators: pd.DataFrame = None) -> dict:
     """Executa validações de qualidade e retorna relatório."""
     report = {}
 
@@ -23,7 +23,7 @@ def validate(df: pd.DataFrame) -> dict:
     report["total_registros"] = len(df)
 
     # 4. Distribuição de status
-    report["status_distribution"] = df["status_category"].value_counts().to_dict()
+    report["status_distribution"] = df["status_category"].value_counts().to_dict() if not df.empty else {}
 
     # 5. Taxa de erro
     error_rate = df["is_error"].mean() * 100 if not df.empty else 0.0
@@ -40,6 +40,14 @@ def validate(df: pd.DataFrame) -> dict:
     # 7. Range temporal
     report["timestamp_min"] = str(df["timestamp"].min())
     report["timestamp_max"] = str(df["timestamp"].max())
+
+    # 8. Classificação de sinistros
+    if "incident_severity" in df.columns and not df.empty:
+        report["incident_distribution"] = df["incident_severity"].value_counts().to_dict()
+
+    # 9. Indicadores
+    if indicators is not None:
+        report["indicator_days"] = len(indicators)
 
     # Resultado
     null_max = max(report["null_pct_campos_obrigatorios"].values(), default=0.0)
